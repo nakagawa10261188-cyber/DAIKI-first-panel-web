@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#030303">
+    <title>ATOM PLACE 初回パネル</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --panel-ratio: 3579 / 2551;
+        --surface: #030303;
+        --text: #ffffff;
+        --muted: rgba(255, 255, 255, 0.66);
+        --line: rgba(255, 255, 255, 0.2);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        min-height: 100dvh;
+        overflow: hidden;
+        background: var(--surface);
+        color: var(--text);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      .viewer {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #030303;
+      }
+
+      .stage {
+        position: relative;
+        width: min(100vw, calc(100dvh * 3579 / 2551));
+        height: min(100dvh, calc(100vw * 2551 / 3579));
+        aspect-ratio: var(--panel-ratio);
+        overflow: hidden;
+        background: #f7f7f7;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 560ms ease;
+      }
+
+      .slide.is-active {
+        opacity: 1;
+        z-index: 1;
+      }
+
+      .slide img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+        background: #f7f7f7;
+      }
+
+      .tap-zone {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 3;
+        width: 34%;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: transparent;
+      }
+
+      .tap-zone:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.8);
+        outline-offset: -4px;
+      }
+
+      .tap-zone.prev {
+        left: 0;
+      }
+
+      .tap-zone.next {
+        right: 0;
+      }
+
+      .status {
+        position: absolute;
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(14px, env(safe-area-inset-bottom));
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 28px;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.34);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1;
+        backdrop-filter: blur(10px);
+      }
+
+      .dots {
+        display: flex;
+        gap: 5px;
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.32);
+      }
+
+      .dot.is-active {
+        background: #ffffff;
+      }
+
+      @media (max-width: 720px) {
+        .status {
+          right: 10px;
+          bottom: 10px;
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="viewer" aria-label="タブレット初回一覧">
+      <section class="stage" id="stage" aria-live="polite"></section>
+      <button class="tap-zone prev" type="button" aria-label="前のパネル"></button>
+      <button class="tap-zone next" type="button" aria-label="次のパネル"></button>
+      <div class="status" aria-hidden="true">
+        <span id="counter">1 / 8</span>
+        <span class="dots" id="dots"></span>
+      </div>
+    </main>
+
+    <script>
+      const panels = [
+        { name: "心湊 海里", src: "assets/panels/01-minato-kairi.jpg" },
+        { name: "キャスト02", src: "assets/panels/02-panel.jpg" },
+        { name: "キャスト03", src: "assets/panels/03-panel.jpg" },
+        { name: "キャスト04", src: "assets/panels/04-panel.jpg" },
+        { name: "キャスト05", src: "assets/panels/05-panel.jpg" },
+        { name: "キャスト06", src: "assets/panels/06-panel.jpg" },
+        { name: "キャスト08", src: "assets/panels/07-panel.jpg" },
+        { name: "キャスト09", src: "assets/panels/08-panel.jpg" }
+      ];
+
+      const stage = document.getElementById("stage");
+      const dots = document.getElementById("dots");
+      const counter = document.getElementById("counter");
+      let current = 0;
+      let timer = null;
+      let touchStartX = null;
+
+      stage.innerHTML = panels
+        .map(
+          (panel, index) => `
+            <article class="slide${index === 0 ? " is-active" : ""}" aria-label="${panel.name}">
+              <img src="${panel.src}" alt="${panel.name}" draggable="false">
+            </article>
+          `
+        )
+        .join("");
+
+      dots.innerHTML = panels.map((_, index) => `<span class="dot${index === 0 ? " is-active" : ""}"></span>`).join("");
+
+      const slides = [...document.querySelectorAll(".slide")];
+      const dotItems = [...document.querySelectorAll(".dot")];
+
+      function show(index) {
+        current = (index + panels.length) % panels.length;
+        slides.forEach((slide, slideIndex) => slide.classList.toggle("is-active", slideIndex === current));
+        dotItems.forEach((dot, dotIndex) => dot.classList.toggle("is-active", dotIndex === current));
+        counter.textContent = `${current + 1} / ${panels.length}`;
+      }
+
+      function restart() {
+        window.clearInterval(timer);
+        timer = window.setInterval(() => show(current + 1), 8000);
+      }
+
+      function move(delta) {
+        show(current + delta);
+        restart();
+      }
+
+      document.querySelector(".prev").addEventListener("click", () => move(-1));
+      document.querySelector(".next").addEventListener("click", () => move(1));
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") move(-1);
+        if (event.key === "ArrowRight") move(1);
+      });
+
+      stage.addEventListener("touchstart", (event) => {
+        touchStartX = event.touches[0]?.clientX ?? null;
+      }, { passive: true });
+
+      stage.addEventListener("touchend", (event) => {
+        if (touchStartX === null) return;
+        const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX;
+        const distance = touchEndX - touchStartX;
+        touchStartX = null;
+        if (Math.abs(distance) < 48) return;
+        move(distance > 0 ? -1 : 1);
+      }, { passive: true });
+
+      restart();
+    </script>
+  </body>
+</html>
