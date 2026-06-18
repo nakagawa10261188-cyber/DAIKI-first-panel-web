@@ -58,6 +58,7 @@
         inset: 0;
         opacity: 0;
         transition: opacity 560ms ease;
+        background: #000000;
       }
 
       .slide.is-active {
@@ -65,12 +66,26 @@
         z-index: 1;
       }
 
-      .slide img {
+      .slide-bg,
+      .slide-photo {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
         display: block;
+      }
+
+      .slide-bg {
         object-fit: cover;
+        opacity: 0.72;
+        filter: blur(26px);
+        transform: scale(1.08);
         background: #000000;
+      }
+
+      .slide-photo {
+        z-index: 1;
+        object-fit: contain;
       }
 
       .tap-zone {
@@ -176,7 +191,8 @@
         .map(
           (panel, index) => `
             <article class="slide${index === 0 ? " is-active" : ""}" aria-label="${panel.name}">
-              <img src="${panel.src}" alt="${panel.name}" draggable="false">
+              <img class="slide-bg" src="${panel.src}" alt="" aria-hidden="true" draggable="false">
+              <img class="slide-photo" src="${panel.src}" alt="${panel.name}" draggable="false">
             </article>
           `
         )
